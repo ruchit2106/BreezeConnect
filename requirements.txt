@@ -1,0 +1,4 @@
+breeze-connect
+vollib
+openpyxl
+python-dotenv

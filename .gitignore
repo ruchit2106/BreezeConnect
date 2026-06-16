@@ -1,0 +1,12 @@
+.env
+logs/
+credentials.json
+tokens.json
+__pycache__/
+*.pyc
+.cache/
+*.xlsx
+!template/*.xlsx
+.stockcodes.json
+*.xlsx
+*.csv
