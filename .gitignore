@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets / runtime (also ignored per-folder; belt-and-suspenders)
+.env
+tokens.json
+
+# Editor / OS
+.DS_Store
+*.swp
