@@ -16,3 +16,8 @@ tokens.json
 # Editor / OS
 .DS_Store
 *.swp
+
+# Excel
+*.xlsx
+*.xls
+*.xlsm
