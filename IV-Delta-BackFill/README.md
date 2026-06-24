@@ -26,18 +26,26 @@ helpers/
   expiry.py             last-Tuesday monthly expiry + time-to-expiry
   candles.py            pick the candle at a target time
 services/
-  login_service.py      Breeze login (Kite-style) -> tokens.json
   breeze_client.py      rate-limited historical fetch + code resolution
   excel_writer.py       xlsx output, resume-aware
 engine/
   strike_searcher.py    scan strikes to bracket the target delta
   backfill_engine.py    BackfillEngine: wires services, owns the loop
 ```
+Login is **not** in this folder. It lives in the shared `auth/` package (a sibling
+at the repo root): `auth/login_service.py` (Breeze login -> session token),
+`auth/.env` (credentials), `auth/tokens.json` (the cached daily token). Every bot
+imports `auth`, so one login is shared across all of them.
 
 ## Setup
 ```bash
 pip install -r requirements.txt      # vollib is pure-Python; works on 3.12
-cp .env.example .env                 # fill in BREEZE_API_KEY / BREEZE_API_SECRET
+```
+Put your credentials in **`auth/.env`** (the shared auth package at the repo root),
+not in this folder:
+```
+BREEZE_API_KEY=...
+BREEZE_API_SECRET=...
 ```
 
 **One-time: set your Breeze app's Redirect URL** (in the ICICI API portal) to
@@ -45,7 +53,7 @@ exactly match the local listener:
 ```
 http://127.0.0.1:8080/
 ```
-(host/port configurable via `CALLBACK_HOST`/`CALLBACK_PORT` in `config/config.py`.)
+(host/port configurable via `CALLBACK_HOST`/`CALLBACK_PORT` in `auth/login_service.py`.)
 After you log in, Breeze POSTs the session token here and the bot captures it
 automatically. If ICICI rejects a plain-`http` loopback and demands `https`,
 tell me — we'll switch the listener to a self-signed TLS socket.

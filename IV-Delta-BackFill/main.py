@@ -8,16 +8,14 @@ from __future__ import annotations
 
 import logging
 import sys
+from pathlib import Path
 
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv()
-except Exception:
-    pass
+# Make the shared `auth` package (one level up, at the repo root) importable when
+# running this bot from its own folder. Auth (login + creds + token) lives there.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import Config
-from services.login_service import LoginService
+from auth.login_service import LoginService
 from services.breeze_client import BreezeClient
 from services.excel_writer import ExcelWriter
 from engine.backfill_engine import BackfillEngine
@@ -42,7 +40,7 @@ for _name in ("APILogger", "WebsocketLogger"):
 
 def main() -> int:
     cfg = Config
-    login = LoginService(cfg)
+    login = LoginService()
 
     # 1. Login — fresh login, or reload the saved token (error -> tell & exit).
     if pick_first_login():

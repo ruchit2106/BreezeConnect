@@ -10,6 +10,10 @@ as a form field (`API_Session`) to the redirect URL. So `first_login` briefly
 runs a local HTTP server at the registered callback URL, opens the browser, and
 grabs the POSTed token automatically — no DevTools, no copy-paste. If that times
 out (or the port is busy), it falls back to manual paste.
+
+This package is self-contained: credentials come from auth/.env, the session
+token is cached in auth/tokens.json, and the login settings below live here —
+nothing auth-related lives in any bot.
 """
 
 from __future__ import annotations
@@ -25,22 +29,31 @@ import urllib.parse
 import webbrowser
 from pathlib import Path
 
-from config import Config
-
 log = logging.getLogger(__name__)
 
-_TOKEN_FILE = Path(__file__).parent.parent / "tokens.json"
+# Session token is cached inside this (auth) folder, shared by every bot.
+_TOKEN_FILE = Path(__file__).resolve().parent / "tokens.json"
 # Form/query keys Breeze has used for the session token, in order of preference.
 _SESSION_KEYS = ("API_Session", "apisession", "session_token", "sessionToken")
+
+# -- Login settings ----------------------------------------------------------
+# The registered redirect URL in your Breeze app MUST be:
+#     http://<CALLBACK_HOST>:<CALLBACK_PORT>/
+# Breeze POSTs the session token (API_Session) to it after you log in.
+CALLBACK_HOST = "127.0.0.1"
+CALLBACK_PORT = 8080
+CALLBACK_TIMEOUT_SEC = 180     # how long to wait for you to finish logging in
+BREEZE_LOGIN_URL = "https://api.icicidirect.com/apiuser/login?api_key="
 
 
 def _import_breeze_connect():
     """Import breeze_connect, shielding its broken bare `import config`.
 
     breeze_connect/breeze_connect.py does `import config` expecting its own
-    sibling config.py, but our top-level `config` package shadows it. We load
-    breeze's config.py under the name 'config' just long enough for breeze to
-    import (it binds the reference into its own globals), then restore ours.
+    sibling config.py, but a top-level `config` package (e.g. a bot's) shadows
+    it. We load breeze's config.py under the name 'config' just long enough for
+    breeze to import (it binds the reference into its own globals), then restore
+    whatever `config` was there.
     """
     if "breeze_connect" not in sys.modules:
         spec = importlib.util.find_spec("breeze_connect")
@@ -88,15 +101,16 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
 
 
 class LoginService:
-    def __init__(self, cfg=Config):
-        self._cfg = cfg
-        self._breeze = _import_breeze_connect()(api_key=cfg.API_KEY)
+    def __init__(self):
+        self._api_key = os.environ.get("BREEZE_API_KEY")
+        self._api_secret = os.environ.get("BREEZE_API_SECRET")
+        self._breeze = _import_breeze_connect()(api_key=self._api_key)
 
     def login_url(self) -> str:
-        return self._cfg.BREEZE_LOGIN_URL + urllib.parse.quote_plus(self._cfg.API_KEY or "")
+        return BREEZE_LOGIN_URL + urllib.parse.quote_plus(self._api_key or "")
 
     def callback_url(self) -> str:
-        return f"http://{self._cfg.CALLBACK_HOST}:{self._cfg.CALLBACK_PORT}/"
+        return f"http://{CALLBACK_HOST}:{CALLBACK_PORT}/"
 
     def first_login(self):
         log.info("Breeze app redirect URL must be set to: %s", self.callback_url())
@@ -111,10 +125,9 @@ class LoginService:
         return self.first_login_with_token(token)
 
     def _await_callback(self) -> str | None:
-        cfg = self._cfg
         try:
             server = http.server.HTTPServer(
-                (cfg.CALLBACK_HOST, cfg.CALLBACK_PORT), _CallbackHandler
+                (CALLBACK_HOST, CALLBACK_PORT), _CallbackHandler
             )
         except OSError as exc:
             log.warning("Could not start callback listener on %s (%s).", self.callback_url(), exc)
@@ -122,7 +135,7 @@ class LoginService:
         server.captured_token = None
         server.timeout = 1
         log.info("Waiting for login callback on %s ...", self.callback_url())
-        deadline = time.time() + cfg.CALLBACK_TIMEOUT_SEC
+        deadline = time.time() + CALLBACK_TIMEOUT_SEC
         try:
             while server.captured_token is None and time.time() < deadline:
                 server.handle_request()
@@ -132,7 +145,7 @@ class LoginService:
 
     def first_login_with_token(self, session_token: str):
         self._breeze.generate_session(
-            api_secret=self._cfg.API_SECRET, session_token=session_token
+            api_secret=self._api_secret, session_token=session_token
         )
         self._save(session_token)
         log.info("Login successful. Token saved.")
@@ -143,7 +156,7 @@ class LoginService:
         if not token:
             raise RuntimeError("No saved token found in tokens.json. Run with first login.")
         self._breeze.generate_session(
-            api_secret=self._cfg.API_SECRET, session_token=token
+            api_secret=self._api_secret, session_token=token
         )
         log.info("Session token loaded from tokens.json.")
         return self._breeze

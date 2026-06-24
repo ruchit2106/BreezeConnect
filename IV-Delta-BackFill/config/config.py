@@ -7,21 +7,11 @@ logic touches is a `Config` attribute. Credentials are read from the environment
 
 from __future__ import annotations
 
-import os
-
 
 class Config:
-    # -- Credentials (from .env; session token is handled by LoginService) ---
-    API_KEY = os.environ.get("BREEZE_API_KEY")
-    API_SECRET = os.environ.get("BREEZE_API_SECRET")
-
-    # -- Login callback (loopback listener that auto-captures the session) ----
-    # The registered redirect URL in your Breeze app MUST be:
-    #     http://<CALLBACK_HOST>:<CALLBACK_PORT>/
-    # Breeze POSTs the session token (API_Session) to it after you log in.
-    CALLBACK_HOST = "127.0.0.1"
-    CALLBACK_PORT = 8080
-    CALLBACK_TIMEOUT_SEC = 180     # how long to wait for you to finish logging in
+    # Authentication — credentials, login callback, and the session token — lives
+    # entirely in the shared `auth` package (see auth/login_service.py). Nothing
+    # auth-related belongs here.
 
     # -- Strategy / model ----------------------------------------------------
     TARGET_DELTA = 0.33            # calls hunt +0.33, puts hunt -0.33
@@ -89,7 +79,6 @@ class Config:
     ISO_TIME_SUFFIX = ".000Z"
     EXPIRY_ISO_TIME = "06:00:00"   # Breeze encodes expiry as <date>T06:00:00.000Z
 
-    BREEZE_LOGIN_URL = "https://api.icicidirect.com/apiuser/login?api_key="
     CODE_LOOKUP_KEYS = ("isec_stock_code", "ISEC_stock_code", "stock_code", "isec_token")
 
     # -- Rate limiting (Breeze: ~100/min, 5000/day) --------------------------
