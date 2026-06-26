@@ -89,8 +89,10 @@ class Config:
     RATE_SLEEP_BUFFER = 0.1
 
     # -- India VIX (best-effort) --------------------------------------------
+    # ICICI's symbol for India VIX is "INDVIX" (NOT "INDIA VIX"). It's an index,
+    # passed straight to the historical call (like "NIFTY"), not resolved via get_names.
     FETCH_VIX = True
-    VIX_STOCK_CODE = "INDIA VIX"
+    VIX_STOCK_CODE = "INDVIX"
     VIX_EXCHANGE = "NSE"
 
     # -- Output / formatting -------------------------------------------------
